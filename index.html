@@ -240,20 +240,20 @@
       <div class="card" id="gateCard">
         <div class="rowhead">
           <div style="flex:1">
-            <h2>내 식별코드</h2>
-            <p class="desc">가입 시 받으신 식별코드를 넣으면 내 기사와 설정이 열립니다.</p>
+            <h2>접속</h2>
+            <p class="desc">구독 안내로 받으신 링크로 들어오시면 바로 열립니다.</p>
           </div>
         </div>
         <div class="grid2">
           <div class="field" style="margin:0">
-            <label class="f" for="code">식별코드</label>
-            <input type="text" id="code" placeholder="예: SN0001" autocomplete="off">
+            <label class="f" for="code">접속 코드</label>
+            <input type="text" id="code" placeholder="링크 끝의 코드" autocomplete="off" spellcheck="false">
           </div>
           <div class="field" style="margin:0; display:flex; align-items:flex-end">
             <button class="btn full" id="openBtn">열기</button>
           </div>
         </div>
-        <p class="hint">코드를 모르시면 담당자에게 문의해주세요.</p>
+        <p class="hint">링크를 잃어버리셨으면 텔레그램으로 담당자에게 문의해주세요.</p>
       </div>
 
       <div class="note" id="note"></div>
@@ -446,33 +446,46 @@ Array.prototype.forEach.call(document.querySelectorAll('.navitem'), function(b){
   });
 });
 
-/* ================= 코드 열기 ================= */
-function openCode(){
-  var code = $('code').value.trim().toUpperCase();
-  if (!code){ note('식별코드를 입력해주세요.', 'err'); return; }
-  S.code = code;
-  try { localStorage.setItem('sondul_code', code); } catch (e) {}
+/* ================= 접속 =================
+   접속 코드(토큰) 하나로 고객을 찾는다. 식별코드는 링크에 넣지 않는다 —
+   텔레그램·메일에 계속 노출되는 값이라 열쇠로 쓸 수 없고, 빼면 링크도 짧아진다. */
+function openWithToken(){
+  var tok = $('code').value.trim();
+  if (!tok){ note('접속 코드를 입력해주세요.', 'err'); return; }
+  S.token = tok;
 
-  $('avatar').textContent = code.slice(0, 2);
-  $('whoName').textContent = code;
-  $('whoCode').textContent = '구독 중';
-
-  veil(true, '설정을 불러오는 중', '잠시만 기다려주세요.');
-  post(URLS.lookup, { code: code })
+  veil(true, '불러오는 중', '잠시만 기다려주세요.');
+  post(URLS.lookup, {})
     .then(function(d){
       veil(false);
-      if (d && d.error){ note(d.error, 'err'); return; }
-      applySettings(d || {});
-      note('설정을 불러왔습니다.', 'ok');
+      if (!d || d.error){
+        note((d && d.error) || '불러오지 못했습니다.', 'err');
+        S.token = '';
+        try { localStorage.removeItem('sondul_token'); } catch (e) {}
+        return;
+      }
+      S.code = d.identifierCode || '';
+      try { localStorage.setItem('sondul_token', tok); } catch (e) {}
+
+      /* 주소창에 코드가 남지 않게 해시를 지운다.
+         localStorage 에 넣어뒀으니 새로고침해도 그대로 열린다. */
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+
+      $('gateCard').style.display = 'none';
+      $('avatar').textContent = (d.customerName || S.code || '?').slice(0, 2);
+      $('whoName').textContent = d.customerName || S.code;
+      $('whoCode').textContent = S.code;
+
+      applySettings(d);
       loadArticles();
     })
     .catch(function(){
       veil(false);
-      note('설정을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.', 'err');
+      note('불러오지 못했습니다. 잠시 후 다시 시도해주세요.', 'err');
     });
 }
-$('openBtn').addEventListener('click', openCode);
-$('code').addEventListener('keydown', function(e){ if (e.key === 'Enter') openCode(); });
+$('openBtn').addEventListener('click', openWithToken);
+$('code').addEventListener('keydown', function(e){ if (e.key === 'Enter') openWithToken(); });
 
 /* ================= 설정 반영 ================= */
 function applySettings(d){
@@ -695,7 +708,7 @@ function renderArticles(){
       '<article class="art">' +
         '<div class="top">' +
           '<i class="dot" style="background:' + col + '; margin-top:7px"></i>' +
-          '<p class="t"><a href="' + esc(a.link) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a>' +
+          '<p class="t"><a href="' + esc(a.link) + '" target="_blank" rel="noopener noreferrer">' + esc(a.title) + '</a>' +
             (st ? ' <span class="stars">' + st + '</span>' : '') + '</p>' +
         '</div>' +
         '<div class="meta">' +
@@ -783,7 +796,7 @@ $('searchBtn').addEventListener('click', function(){
         '<div class="card"><h2>결과 ' + arts.length + '건</h2><p class="desc" style="margin:0">"' + esc(kw) + '"</p></div>' +
         arts.map(function(a){
           return '<article class="art">' +
-            '<p class="t"><a href="' + esc(a.link) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a></p>' +
+            '<p class="t"><a href="' + esc(a.link) + '" target="_blank" rel="noopener noreferrer">' + esc(a.title) + '</a></p>' +
             '<div class="meta">' + (a.pubDate ? '<span>' + esc(a.pubDate) + '</span>' : '') + '</div>' +
             (a.reason ? '<p class="why">' + esc(a.reason) + '</p>' : '') +
           '</article>';
@@ -819,11 +832,16 @@ function renderPlan(){
 
 /* ================= 시작 ================= */
 (function init(){
-  var qs = new URLSearchParams(location.search);
-  var c = qs.get('c') || '';
-  S.token = qs.get('t') || '';
-  if (!c){ try { c = localStorage.getItem('sondul_code') || ''; } catch (e) {} }
-  if (c){ $('code').value = c; openCode(); }
+  /* 토큰은 해시(#)에서 읽는다. 쿼리스트링(?t=)은 브라우저가 Referer 헤더로
+     외부 사이트에 실어 보내는데, 이 화면은 기사 링크를 걸어두므로 고객이
+     기사를 클릭하는 순간 언론사 서버로 넘어갈 수 있다. 해시는 전송되지 않는다.
+     예전 ?t= 링크도 당분간 받아준다. */
+  var h = (location.hash || '').replace(/^#/, '');
+  if (h.indexOf('t=') === 0) h = h.slice(2);
+  var tok = h || new URLSearchParams(location.search).get('t') || '';
+  if (!tok){ try { tok = localStorage.getItem('sondul_token') || ''; } catch (e) {} }
+
+  if (tok){ $('code').value = tok; openWithToken(); }
 
   var t = new Date(), f = new Date(t.getTime() - 7 * 86400000);
   $('dTo').value = t.toISOString().slice(0, 10);
