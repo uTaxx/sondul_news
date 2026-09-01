@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>손덜 관리자</title>
+<style>
+  :root{
+    --bg:#F4F4F5; --card:#FFFFFF;
+    --line:#E8E8EA; --line-2:#D6D6DA;
+    --ink:#0A0A0B; --ink-2:#3F3F46; --muted:#8A8A93;
+    --violet:#6D4AFF; --green:#12B76A; --red:#F04438; --blue:#2E6BFF; --amber:#F79009;
+    --r:16px; --r-sm:10px; --r-pill:999px;
+    --sans:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:var(--sans); background:var(--bg); color:var(--ink); font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased}
+  button{font-family:inherit}
+
+  /* 관리자임을 한눈에 알도록 상단을 검정 띠로 */
+  .topbar{background:var(--ink); color:#fff; padding:13px 22px; display:flex; align-items:center; gap:11px}
+  .topbar .mark{width:26px; height:26px; border-radius:8px; background:#fff; color:var(--ink); display:grid; place-items:center; font-weight:700; font-size:12px}
+  .topbar b{font-size:14.5px; letter-spacing:-.01em}
+  .topbar .tag{margin-left:auto; font-size:11.5px; color:#A1A1AA; font-weight:600; letter-spacing:.04em}
+
+  .wrap{max-width:1080px; margin:0 auto; padding:26px 22px 70px}
+  h1{font-size:24px; font-weight:700; letter-spacing:-.03em; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:13.5px; margin:0 0 20px}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:20px; margin-bottom:14px}
+  .card h2{font-size:16.5px; font-weight:700; letter-spacing:-.02em; margin:0 0 4px}
+  .card .desc{color:var(--muted); font-size:13px; margin:0 0 16px}
+  .hr{height:1px; background:var(--line); margin:16px -20px 14px}
+  .rowhead{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+
+  .seg{display:inline-flex; gap:4px; background:var(--card); padding:4px; border:1px solid var(--line); border-radius:var(--r-pill); margin-bottom:20px}
+  .seg button{border:0; background:transparent; padding:7px 15px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--ink-2); cursor:pointer}
+  .seg button.on{background:var(--ink); color:#fff}
+
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:10px 16px; border-radius:var(--r-sm); border:1px solid var(--ink); background:var(--ink); color:#fff; font-size:13.5px; font-weight:600; cursor:pointer}
+  .btn:hover{opacity:.88}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .btn.ghost{background:var(--card); color:var(--ink); border-color:var(--line-2)}
+  .btn.ghost:hover{background:#FAFAFB; opacity:1}
+  .btn.sm{padding:6px 11px; font-size:12.5px; border-radius:8px}
+  .btn.full{width:100%}
+  .btn.danger{background:var(--red); border-color:var(--red)}
+
+  label.f{display:block; font-size:12.5px; font-weight:600; color:var(--ink-2); margin:0 0 6px}
+  input[type=text],input[type=password],input[type=date],input[type=number],select{
+    width:100%; padding:10px 12px; border:1px solid var(--line-2); border-radius:var(--r-sm);
+    font-family:inherit; font-size:13.5px; background:var(--card); color:var(--ink);
+  }
+  input:focus,select:focus{outline:2px solid #DDD9FF; outline-offset:-1px; border-color:var(--violet)}
+  .field{margin-bottom:14px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+
+  .note{padding:12px 14px; border-radius:var(--r-sm); font-size:13px; margin-bottom:14px; display:none}
+  .note.show{display:block}
+  .note.ok{background:#ECFDF3; color:#05603A; border:1px solid #ABEFC6}
+  .note.err{background:#FEF3F2; color:#912018; border:1px solid #FECDCA}
+  .note.info{background:#F4F4F5; color:var(--ink-2); border:1px solid var(--line)}
+  .empty{padding:40px 16px; text-align:center; color:var(--muted); font-size:13px}
+
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block}
+  .tag{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:var(--r-pill); background:#F4F4F5; border:1px solid var(--line); font-size:11.5px; font-weight:600; color:var(--ink-2)}
+  .tag.red{background:#FEF3F2; border-color:#FECDCA; color:#912018}
+  .tag.green{background:#ECFDF3; border-color:#ABEFC6; color:#05603A}
+  .tag.amber{background:#FFFAEB; border-color:#FEDF89; color:#93370D}
+
+  /* 고객 카드 */
+  .cust{border:1px solid var(--line); border-radius:var(--r); background:var(--card); margin-bottom:10px; overflow:hidden}
+  .cust .head{display:flex; align-items:center; gap:12px; padding:15px 18px; cursor:pointer}
+  .cust .head:hover{background:#FAFAFB}
+  .cust .nm{font-weight:650; font-size:14.5px; letter-spacing:-.01em}
+  .cust .cd{font-size:11.5px; color:var(--muted)}
+  .cust .right{margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+  .cust .body{display:none; padding:0 18px 18px; border-top:1px solid var(--line)}
+  .cust.open .body{display:block}
+  .usage{font-size:12px; color:var(--muted)}
+  .over{color:var(--red); font-weight:650}
+
+  .kv{display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); font-size:13.5px}
+  .kv:last-child{border-bottom:0}
+  .kv span{color:var(--muted)}
+  .kv b{font-weight:650}
+
+  .stat{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px}
+  .stat .s{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:15px 16px}
+  .stat .s span{display:block; font-size:11.5px; color:var(--muted); font-weight:600; margin-bottom:5px}
+  .stat .s b{font-size:20px; font-weight:700; letter-spacing:-.02em}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px}
+  th,td{text-align:left; padding:9px 8px; border-bottom:1px solid var(--line)}
+  th{color:var(--muted); font-weight:600; font-size:11.5px}
+  td.num{text-align:right; font-variant-numeric:tabular-nums}
+  .scroll{overflow-x:auto}
+
+  .veil{position:fixed; inset:0; background:rgba(244,244,245,.82); backdrop-filter:blur(3px); display:none; place-items:center; z-index:60}
+  .veil.show{display:grid}
+  .veil .box{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:26px 30px; text-align:center}
+  .spin{width:26px; height:26px; border:2.5px solid var(--line-2); border-top-color:var(--ink); border-radius:50%; margin:0 auto 12px; animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .view{display:none}
+  .view.on{display:block}
+
+  @media (max-width:760px){
+    .grid2,.grid3{grid-template-columns:1fr}
+    .stat{grid-template-columns:1fr 1fr}
+    .wrap{padding:20px 14px 60px}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="mark">손</div>
+  <b>손덜 키워드 뉴스</b>
+  <span class="tag">ADMIN</span>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== 로그인 ===== -->
+  <section id="gate">
+    <h1>관리자</h1>
+    <p class="sub">고객 상한과 구독 기간을 관리합니다.</p>
+    <div class="card" style="max-width:400px">
+      <div class="field">
+        <label class="f" for="pw">관리자 비밀번호</label>
+        <input type="password" id="pw" autocomplete="current-password" placeholder="••••••">
+      </div>
+      <button class="btn full" id="loginBtn">들어가기</button>
+      <div class="note" id="gateNote" style="margin:14px 0 0"></div>
+    </div>
+  </section>
+
+  <!-- ===== 본문 ===== -->
+  <section id="app" style="display:none">
+    <h1>고객 관리</h1>
+    <p class="sub" id="appSub">—</p>
+
+    <div class="seg" id="seg">
+      <button class="on" data-v="customers">고객</button>
+      <button data-v="cost">API 비용</button>
+    </div>
+
+    <div class="note" id="note"></div>
+
+    <!-- 고객 -->
+    <div class="view on" id="v-customers">
+      <div class="stat" id="stats"></div>
+      <div id="custList"></div>
+    </div>
+
+    <!-- 비용 -->
+    <div class="view" id="v-cost">
+      <div class="stat" id="costStats"></div>
+      <div class="card">
+        <h2>동작별</h2>
+        <p class="desc">어떤 동작에 얼마가 들었는지</p>
+        <div id="byPurpose"><div class="empty">불러오는 중</div></div>
+      </div>
+      <div class="card">
+        <h2>최근 호출</h2>
+        <p class="desc">가장 최근 기록부터</p>
+        <div class="scroll"><table id="recent"><tbody><tr><td class="empty">불러오는 중</td></tr></tbody></table></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="veil" id="veil">
+  <div class="box"><div class="spin"></div><b id="veilT">불러오는 중</b></div>
+</div>
+
+<script>
+/* ================= 설정 ================= */
+var BASE = 'https://sondullab.app.n8n.cloud/webhook/';
+var URLS = {
+  customers: BASE + 'sondul-admin-customers',
+  update:    BASE + 'sondul-admin-update',
+  cost:      BASE + 'sondul-api-cost'
+};
+
+/* 비밀번호는 메모리에만 둔다. 새로고침하면 다시 입력해야 하지만,
+   관리자 자격증명을 브라우저 저장소에 남기지 않는 편이 낫다. */
+var PW = '';
+var CUSTOMERS = [];
+
+/* ================= 유틸 ================= */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function note(msg, kind, el){
+  var n = $(el || 'note');
+  n.className = 'note show ' + (kind || 'info');
+  n.textContent = msg;
+  if (kind === 'ok') setTimeout(function(){ n.className = 'note'; }, 4000);
+}
+function veil(on, t){ $('veil').classList.toggle('show', !!on); if (t) $('veilT').textContent = t; }
+function post(url, body){
+  return fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ pw: PW }, body))
+  }).then(function(r){ return r.json(); });
+}
+function won(n){ return (Math.round(Number(n) || 0)).toLocaleString('ko-KR'); }
+function usd(n){ return '$' + (Number(n) || 0).toFixed(4); }
+function daysLeft(dateStr){
+  if (!dateStr) return null;
+  var d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return Math.ceil((d - new Date().setHours(0,0,0,0)) / 86400000);
+}
+function addMonths(dateStr, m){
+  var d = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(d)) d = new Date();
+  /* 이미 지난 만료일에 더하면 과거가 되니, 오늘보다 이르면 오늘부터 센다 */
+  var today = new Date(); today.setHours(0,0,0,0);
+  if (d < today) d = today;
+  d.setMonth(d.getMonth() + m);
+  return d.toISOString().slice(0, 10);
+}
+
+/* ================= 로그인 ================= */
+function login(){
+  var v = $('pw').value.trim();
+  if (!v){ note('비밀번호를 입력해주세요.', 'err', 'gateNote'); return; }
+  PW = v;
+  veil(true, '확인 중');
+  post(URLS.customers, {})
+    .then(function(d){
+      veil(false);
+      if (!d || d.error){
+        PW = '';
+        note((d && d.error) || '비밀번호가 맞지 않습니다.', 'err', 'gateNote');
+        return;
+      }
+      CUSTOMERS = d.customers || [];
+      $('gate').style.display = 'none';
+      $('app').style.display = 'block';
+      $('pw').value = '';
+      renderCustomers();
+    })
+    .catch(function(){
+      veil(false); PW = '';
+      note('서버에 연결하지 못했습니다.', 'err', 'gateNote');
+    });
+}
+$('loginBtn').addEventListener('click', login);
+$('pw').addEventListener('keydown', function(e){ if (e.key === 'Enter') login(); });
+
+/* ================= 탭 ================= */
+Array.prototype.forEach.call($('seg').querySelectorAll('button'), function(b){
+  b.addEventListener('click', function(){
+    Array.prototype.forEach.call($('seg').querySelectorAll('button'), function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    Array.prototype.forEach.call(document.querySelectorAll('.view'), function(v){ v.classList.remove('on'); });
+    $('v-' + b.dataset.v).classList.add('on');
+    if (b.dataset.v === 'cost' && !$('recent').dataset.loaded) loadCost();
+  });
+});
+
+/* ================= 고객 ================= */
+function renderCustomers(){
+  var active = 0, expiring = 0, expired = 0;
+  CUSTOMERS.forEach(function(c){
+    var dl = daysLeft(c.expires);
+    if (dl === null) return;
+    if (dl < 0) expired++;
+    else if (dl <= 3) expiring++;
+    else active++;
+  });
+
+  $('appSub').textContent = '고객 ' + CUSTOMERS.length + '명';
+  $('stats').innerHTML =
+    '<div class="s"><span>전체</span><b>' + CUSTOMERS.length + '</b></div>' +
+    '<div class="s"><span>정상</span><b>' + active + '</b></div>' +
+    '<div class="s"><span>만료 임박</span><b style="color:var(--amber)">' + expiring + '</b></div>' +
+    '<div class="s"><span>만료</span><b style="color:var(--red)">' + expired + '</b></div>';
+
+  if (!CUSTOMERS.length){
+    $('custList').innerHTML = '<div class="card"><div class="empty">아직 등록된 고객이 없습니다.</div></div>';
+    return;
+  }
+
+  $('custList').innerHTML = CUSTOMERS.map(function(c, i){
+    var dl = daysLeft(c.expires);
+    var lbl, cls;
+    if (dl === null){ lbl = '만료일 없음'; cls = ''; }
+    else if (dl < 0){ lbl = '만료됨'; cls = 'red'; }
+    else if (dl <= 3){ lbl = 'D-' + dl; cls = 'amber'; }
+    else { lbl = 'D-' + dl; cls = 'green'; }
+
+    var gOver = Number(c.groupCount || 0) > Number(c.maxGroups || 0);
+    var kOver = Number(c.keywordMax || 0) > Number(c.maxKeywords || 0);
+    var live = String(c.status || '') === '운영중';
+
+    return '' +
+    '<div class="cust" data-i="' + i + '">' +
+      '<div class="head">' +
+        '<i class="dot" style="background:' + (live ? 'var(--green)' : 'var(--muted)') + '"></i>' +
+        '<div>' +
+          '<div class="nm">' + esc(c.name || '(이름 없음)') + '</div>' +
+          '<div class="cd">' + esc(c.code) + ' · ' + esc(c.plan || '기본') + '</div>' +
+        '</div>' +
+        '<div class="right">' +
+          '<span class="usage' + (gOver || kOver ? ' over' : '') + '">' +
+            '그룹 ' + (c.groupCount != null ? c.groupCount : '?') + '/' + (c.maxGroups != null ? c.maxGroups : '?') +
+            ' · 키워드 최대 ' + (c.keywordMax != null ? c.keywordMax : '?') + '/' + (c.maxKeywords != null ? c.maxKeywords : '?') +
+          '</span>' +
+          '<span class="tag ' + cls + '">' + lbl + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="body">' +
+        '<div class="grid3" style="margin-top:16px">' +
+          '<div class="field"><label class="f">요금제</label>' +
+            '<select class="e-plan">' +
+              '<option value="기본"' + (c.plan === '기본' ? ' selected' : '') + '>기본</option>' +
+              '<option value="확장"' + (c.plan === '확장' ? ' selected' : '') + '>확장</option>' +
+            '</select></div>' +
+          '<div class="field"><label class="f">최대 그룹 수</label>' +
+            '<input type="number" class="e-mg" min="1" max="20" value="' + esc(c.maxGroups) + '"></div>' +
+          '<div class="field"><label class="f">그룹당 최대 키워드</label>' +
+            '<input type="number" class="e-mk" min="1" max="100" value="' + esc(c.maxKeywords) + '"></div>' +
+        '</div>' +
+        '<div class="grid3">' +
+          '<div class="field"><label class="f">만료일</label>' +
+            '<input type="date" class="e-exp" value="' + esc((c.expires || '').slice(0, 10)) + '"></div>' +
+          '<div class="field"><label class="f">상태</label>' +
+            '<select class="e-status">' +
+              '<option value="운영중"' + (c.status === '운영중' ? ' selected' : '') + '>운영중</option>' +
+              '<option value="정지"' + (c.status === '정지' ? ' selected' : '') + '>정지</option>' +
+            '</select></div>' +
+          '<div class="field"><label class="f">기간 더하기</label>' +
+            '<div style="display:flex; gap:6px">' +
+              '<button class="btn ghost sm add" data-m="1">+1개월</button>' +
+              '<button class="btn ghost sm add" data-m="3">+3개월</button>' +
+              '<button class="btn ghost sm add" data-m="12">+1년</button>' +
+            '</div></div>' +
+        '</div>' +
+        '<div class="kv"><span>연락 이메일</span><b>' + (esc(c.email) || '—') + '</b></div>' +
+        '<div class="kv"><span>텔레그램 chatId</span><b>' + (esc(c.chatId) || '—') + '</b></div>' +
+        '<div class="kv"><span>가입일</span><b>' + (esc(c.joined) || '—') + '</b></div>' +
+        '<div class="kv"><span>결제 상태</span><b>' + (esc(c.payStatus) || '—') + '</b></div>' +
+        (gOver || kOver
+          ? '<div class="note err show" style="margin:14px 0 0">현재 사용량이 상한을 넘습니다. 기존 키워드는 그대로 두고 <b>추가만</b> 막힙니다.</div>'
+          : '') +
+        '<div class="hr"></div>' +
+        '<button class="btn save">저장</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  bindCustomerEvents();
+}
+
+function bindCustomerEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('.cust .head'), function(h){
+    h.addEventListener('click', function(){ h.parentNode.classList.toggle('open'); });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.cust .add'), function(b){
+    b.addEventListener('click', function(){
+      var box = b.closest('.cust');
+      var exp = box.querySelector('.e-exp');
+      exp.value = addMonths(exp.value, Number(b.dataset.m));
+      note('만료일을 ' + exp.value + '로 바꿨습니다. 저장을 눌러야 반영됩니다.', 'info');
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.cust .save'), function(b){
+    b.addEventListener('click', function(){
+      var box = b.closest('.cust');
+      var c = CUSTOMERS[+box.dataset.i];
+      var patch = {
+        plan:        box.querySelector('.e-plan').value,
+        maxGroups:   Number(box.querySelector('.e-mg').value),
+        maxKeywords: Number(box.querySelector('.e-mk').value),
+        expires:     box.querySelector('.e-exp').value,
+        status:      box.querySelector('.e-status').value
+      };
+      if (!(patch.maxGroups > 0) || !(patch.maxKeywords > 0)){
+        note('상한은 1 이상이어야 합니다.', 'err'); return;
+      }
+
+      b.disabled = true; b.textContent = '저장 중...';
+      veil(true, '저장 중');
+      post(URLS.update, { code: c.code, patch: patch })
+        .then(function(d){
+          veil(false); b.disabled = false; b.textContent = '저장';
+          if (!d || d.error){ note((d && d.error) || '저장하지 못했습니다.', 'err'); return; }
+          Object.assign(c, patch);
+          if (d.customer) Object.assign(c, d.customer);
+          note(c.code + ' 저장했습니다.', 'ok');
+          renderCustomers();
+        })
+        .catch(function(){
+          veil(false); b.disabled = false; b.textContent = '저장';
+          note('저장하지 못했습니다.', 'err');
+        });
+    });
+  });
+}
+
+/* ================= 비용 ================= */
+function loadCost(){
+  veil(true, '비용을 불러오는 중');
+  post(URLS.cost, {})
+    .then(function(d){
+      veil(false);
+      if (!d || d.error){ note((d && d.error) || '비용을 불러오지 못했습니다.', 'err'); return; }
+      $('recent').dataset.loaded = '1';
+
+      $('costStats').innerHTML =
+        '<div class="s"><span>오늘</span><b>' + usd(d.today) + '</b></div>' +
+        '<div class="s"><span>오늘 호출</span><b>' + (d.todayCalls || 0) + '</b></div>' +
+        '<div class="s"><span>누적</span><b>' + usd(d.cost) + '</b></div>' +
+        '<div class="s"><span>누적 호출</span><b>' + (d.calls || 0) + '</b></div>';
+
+      var bp = d.byPurpose || [];
+      $('byPurpose').innerHTML = bp.length
+        ? bp.map(function(p){
+            return '<div class="kv"><span>' + esc(p.purpose) + ' <span style="font-size:11.5px">(' + (p.calls || 0) + '회)</span></span>' +
+              '<b>' + usd(p.cost) + '</b></div>';
+          }).join('')
+        : '<div class="empty">기록이 없습니다.</div>';
+
+      var rc = d.recent || [];
+      $('recent').innerHTML = rc.length
+        ? '<thead><tr><th>일시</th><th>용도</th><th>상세</th><th class="num">입력</th><th class="num">출력</th><th class="num">비용</th></tr></thead><tbody>' +
+          rc.map(function(r){
+            return '<tr><td>' + esc(r.at) + '</td><td>' + esc(r.purpose) + '</td>' +
+              '<td style="color:var(--muted)">' + esc(r.detail) + '</td>' +
+              '<td class="num">' + won(r.inputTokens) + '</td>' +
+              '<td class="num">' + won(r.outputTokens) + '</td>' +
+              '<td class="num">' + usd(r.cost) + '</td></tr>';
+          }).join('') + '</tbody>'
+        : '<tbody><tr><td class="empty">기록이 없습니다.</td></tr></tbody>';
+    })
+    .catch(function(){ veil(false); note('비용을 불러오지 못했습니다.', 'err'); });
+}
+</script>
+</body>
+</html>
