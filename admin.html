@@ -39,7 +39,7 @@
   .seg button{border:0; background:transparent; padding:7px 15px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--ink-2); cursor:pointer}
   .seg button.on{background:var(--ink); color:#fff}
 
-  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:10px 16px; border-radius:var(--r-sm); border:1px solid var(--ink); background:var(--ink); color:#fff; font-size:13.5px; font-weight:600; cursor:pointer}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:10px 16px; border-radius:var(--r-sm); border:1px solid var(--ink); background:var(--ink); color:#fff; font-size:13.5px; font-weight:600; cursor:pointer; text-decoration:none}
   .btn:hover{opacity:.88}
   .btn:disabled{opacity:.45; cursor:not-allowed}
   .btn.ghost{background:var(--card); color:var(--ink); border-color:var(--line-2)}
@@ -49,7 +49,7 @@
   .btn.danger{background:var(--red); border-color:var(--red)}
 
   label.f{display:block; font-size:12.5px; font-weight:600; color:var(--ink-2); margin:0 0 6px}
-  input[type=text],input[type=password],input[type=date],input[type=number],select{
+  input[type=text],input[type=email],input[type=password],input[type=date],input[type=number],select{
     width:100%; padding:10px 12px; border:1px solid var(--line-2); border-radius:var(--r-sm);
     font-family:inherit; font-size:13.5px; background:var(--card); color:var(--ink);
   }
@@ -153,6 +153,55 @@
 
     <!-- 고객 -->
     <div class="view on" id="v-customers">
+
+      <div class="card" id="newCard">
+        <div class="rowhead">
+          <div style="flex:1">
+            <h2>새 고객</h2>
+            <p class="desc">만들면 기사 시트와 접속 링크까지 한 번에 준비됩니다.</p>
+          </div>
+          <button class="btn ghost sm" id="newToggle">열기</button>
+        </div>
+
+        <div id="newForm" style="display:none">
+          <div class="hr"></div>
+          <div class="grid2">
+            <div class="field">
+              <label class="f" for="nName">고객명</label>
+              <input type="text" id="nName" placeholder="홍길동 / ○○투자방" autocomplete="off">
+            </div>
+            <div class="field">
+              <label class="f" for="nEmail">연락 이메일</label>
+              <input type="email" id="nEmail" placeholder="비워도 됩니다" autocomplete="off">
+            </div>
+          </div>
+          <div class="grid3">
+            <div class="field">
+              <label class="f" for="nChat">텔레그램 방 번호</label>
+              <input type="text" id="nChat" placeholder="-1001234567890" autocomplete="off">
+            </div>
+            <div class="field">
+              <label class="f" for="nPlan">요금제</label>
+              <select id="nPlan"><option>기본</option><option>확장</option></select>
+            </div>
+            <div class="field">
+              <label class="f" for="nTerm">기간</label>
+              <select id="nTerm">
+                <option value="trial">체험 14일</option>
+                <option value="1" selected>1개월</option>
+                <option value="3">3개월</option>
+                <option value="6">6개월</option>
+                <option value="12">12개월</option>
+              </select>
+            </div>
+          </div>
+          <p class="hint" style="margin:0 0 14px">이메일과 텔레그램 방 번호 중 하나는 있어야 보낼 곳이 생깁니다. 발송 시각은 07:00으로 시작하고, 이후 고객이 직접 바꿉니다.</p>
+          <button class="btn" id="createBtn">만들기</button>
+          <div class="note" id="newNote" style="margin:14px 0 0"></div>
+          <div id="newDone" style="display:none"></div>
+        </div>
+      </div>
+
       <div class="stat" id="stats"></div>
       <div id="custList"></div>
     </div>
@@ -189,7 +238,8 @@ var BASE = 'https://sondullab.app.n8n.cloud/webhook/';
 var URLS = {
   customers: BASE + 'sondul-admin-customers',
   update:    BASE + 'sondul-admin-update',
-  cost:      BASE + 'sondul-api-cost'
+  cost:      BASE + 'sondul-api-cost',
+  create:    BASE + 'sondul-admin-create'
 };
 
 /* 비밀번호는 메모리에만 둔다. 새로고침하면 다시 입력해야 하지만,
@@ -273,6 +323,85 @@ Array.prototype.forEach.call($('seg').querySelectorAll('button'), function(b){
     if (b.dataset.v === 'cost' && !$('recent').dataset.loaded) loadCost();
   });
 });
+
+/* ================= 새 고객 ================= */
+$('newToggle').addEventListener('click', function(){
+  var box = $('newForm');
+  var open = box.style.display !== 'none';
+  box.style.display = open ? 'none' : 'block';
+  $('newToggle').textContent = open ? '열기' : '접기';
+  if (!open) $('nName').focus();
+});
+
+$('createBtn').addEventListener('click', function(){
+  var name = $('nName').value.trim();
+  var email = $('nEmail').value.trim();
+  var chatId = $('nChat').value.trim();
+  var term = $('nTerm').value;
+
+  /* 화면에서도 막지만 진짜 기준은 서버다. 여기서 거르는 건 왕복 한 번을 아끼려는 것뿐이다. */
+  if (!name){ note('고객명을 적어주세요.', 'err', 'newNote'); return; }
+  if (!email && !chatId){ note('이메일이나 텔레그램 방 번호 중 하나는 있어야 합니다.', 'err', 'newNote'); return; }
+
+  var btn = $('createBtn');
+  btn.disabled = true; btn.textContent = '만드는 중...';
+  veil(true, '고객을 만드는 중');
+
+  post(URLS.create, {
+    name: name, email: email, chatId: chatId,
+    plan: $('nPlan').value,
+    trial: term === 'trial',
+    months: term === 'trial' ? null : Number(term),
+    sendTimes: ['07:00'],
+    excludeWeekend: true
+  })
+    .then(function(d){
+      veil(false); btn.disabled = false; btn.textContent = '만들기';
+      if (!d || d.error){ note((d && d.error) || '만들지 못했습니다.', 'err', 'newNote'); return; }
+      showCreated(d);
+      $('nName').value = ''; $('nEmail').value = ''; $('nChat').value = '';
+      /* 목록을 다시 불러 방금 만든 고객이 아래에도 보이게 한다 */
+      post(URLS.customers, {}).then(function(r){
+        if (r && r.customers){ CUSTOMERS = r.customers; renderCustomers(); }
+      });
+    })
+    .catch(function(){
+      veil(false); btn.disabled = false; btn.textContent = '만들기';
+      note('서버에 연결하지 못했습니다.', 'err', 'newNote');
+    });
+});
+
+/* 접속 링크를 볼 수 있는 곳은 여기와 텔레그램 알림뿐이다.
+   고객 목록 응답에는 토큰을 담지 않기 때문에, 놓치면 시트를 직접 열어야 한다. */
+function showCreated(d){
+  var box = $('newDone');
+  box.style.display = 'block';
+  box.innerHTML =
+    '<div class="hr"></div>' +
+    '<p class="desc" style="margin:0 0 10px"><b>' + esc(d.code) + '</b> ' + esc(d.name || '') +
+      ' · ' + esc(d.payStatus || '') + ' · ' + esc(d.expires || '') + '까지</p>' +
+    '<div class="field" style="margin-bottom:10px">' +
+      '<label class="f">고객에게 보낼 링크</label>' +
+      '<input type="text" id="newLink" readonly value="' + esc(d.link) + '">' +
+    '</div>' +
+    '<button class="btn ghost sm" id="copyLink">링크 복사</button> ' +
+    (d.sheetUrl ? '<a class="btn ghost sm" href="' + esc(d.sheetUrl) + '" target="_blank" rel="noopener noreferrer">기사 시트 열기</a>' : '');
+
+  var c = $('copyLink');
+  if (c) c.addEventListener('click', function(){
+    var el = $('newLink');
+    el.select(); el.setSelectionRange(0, 999);
+    var done = false;
+    try { done = document.execCommand('copy'); } catch (e) {}
+    if (!done && navigator.clipboard){
+      navigator.clipboard.writeText(el.value)
+        .then(function(){ note('복사했습니다.', 'ok', 'newNote'); })
+        .catch(function(){ note('직접 선택해서 복사해주세요.', 'err', 'newNote'); });
+      return;
+    }
+    note(done ? '복사했습니다.' : '직접 선택해서 복사해주세요.', done ? 'ok' : 'err', 'newNote');
+  });
+}
 
 /* ================= 고객 ================= */
 function renderCustomers(){
