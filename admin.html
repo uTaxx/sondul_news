@@ -88,7 +88,7 @@
   .kv span{color:var(--muted)}
   .kv b{font-weight:650}
 
-  .stat{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px}
+  .stat{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:12px; margin-bottom:14px}
   .stat .s{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:15px 16px}
   .stat .s span{display:block; font-size:11.5px; color:var(--muted); font-weight:600; margin-bottom:5px}
   .stat .s b{font-size:20px; font-weight:700; letter-spacing:-.02em}
@@ -160,6 +160,11 @@
     <!-- 비용 -->
     <div class="view" id="v-cost">
       <div class="stat" id="costStats"></div>
+      <div class="card">
+        <h2>고객별 원가</h2>
+        <p class="desc">최근 30일 기준. 월 요금과 비교해 어느 고객이 남는지 봅니다.</p>
+        <div class="scroll"><table id="byCust"><tbody><tr><td class="empty">불러오는 중</td></tr></tbody></table></div>
+      </div>
       <div class="card">
         <h2>동작별</h2>
         <p class="desc">어떤 동작에 얼마가 들었는지</p>
@@ -280,12 +285,23 @@ function renderCustomers(){
     else active++;
   });
 
-  $('appSub').textContent = '고객 ' + CUSTOMERS.length + '명';
+  /* 매출·원가·마진은 '운영중'인 고객만 센다. 정지된 고객은 요금을 받지 않으므로
+     같이 더하면 실제보다 좋아 보인다. */
+  var live = CUSTOMERS.filter(function(c){ return String(c.status || '') === '운영중'; });
+  var fee = live.reduce(function(a, c){ return a + (Number(c.fee) || 0); }, 0);
+  var cost = live.reduce(function(a, c){ return a + (Number(c.costKrw30) || 0); }, 0);
+  var margin = fee - cost;
+  var pct = fee ? Math.round(margin / fee * 1000) / 10 : null;
+
+  $('appSub').textContent = '고객 ' + CUSTOMERS.length + '명 · 운영중 ' + live.length + '명';
   $('stats').innerHTML =
     '<div class="s"><span>전체</span><b>' + CUSTOMERS.length + '</b></div>' +
-    '<div class="s"><span>정상</span><b>' + active + '</b></div>' +
     '<div class="s"><span>만료 임박</span><b style="color:var(--amber)">' + expiring + '</b></div>' +
-    '<div class="s"><span>만료</span><b style="color:var(--red)">' + expired + '</b></div>';
+    '<div class="s"><span>만료</span><b style="color:var(--red)">' + expired + '</b></div>' +
+    '<div class="s"><span>월 매출</span><b>' + won(fee) + '원</b></div>' +
+    '<div class="s"><span>월 원가 (30일)</span><b>' + won(cost) + '원</b></div>' +
+    '<div class="s"><span>마진</span><b style="color:' + (margin >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
+      won(margin) + '원' + (pct === null ? '' : ' <span style="font-size:12px;color:var(--muted)">' + pct + '%</span>') + '</b></div>';
 
   if (!CUSTOMERS.length){
     $('custList').innerHTML = '<div class="card"><div class="empty">아직 등록된 고객이 없습니다.</div></div>';
@@ -317,6 +333,9 @@ function renderCustomers(){
             '그룹 ' + (c.groupCount != null ? c.groupCount : '?') + '/' + (c.maxGroups != null ? c.maxGroups : '?') +
             ' · 키워드 최대 ' + (c.keywordMax != null ? c.keywordMax : '?') + '/' + (c.maxKeywords != null ? c.maxKeywords : '?') +
           '</span>' +
+          (c.margin == null ? '' :
+            '<span class="tag ' + (c.margin >= 0 ? 'green' : 'red') + '" title="월 요금 - 최근 30일 원가">' +
+              '마진 ' + won(c.margin) + '원</span>') +
           '<span class="tag ' + cls + '">' + lbl + '</span>' +
         '</div>' +
       '</div>' +
@@ -351,6 +370,16 @@ function renderCustomers(){
         '<div class="kv"><span>텔레그램 chatId</span><b>' + (esc(c.chatId) || '—') + '</b></div>' +
         '<div class="kv"><span>가입일</span><b>' + (esc(c.joined) || '—') + '</b></div>' +
         '<div class="kv"><span>결제 상태</span><b>' + (esc(c.payStatus) || '—') + '</b></div>' +
+
+        '<div style="margin:16px 0 6px; font-size:12.5px; font-weight:700; letter-spacing:-.01em">이 고객의 원가</div>' +
+        '<div class="kv"><span>월 요금</span><b>' + won(c.fee) + '원</b></div>' +
+        '<div class="kv"><span>최근 30일 원가</span><b>' + won(c.costKrw30) + '원 ' +
+          '<span style="font-size:11.5px; color:var(--muted)">(' + usd(c.costUsd30) + ' · ' + (c.calls30 || 0) + '회)</span></b></div>' +
+        (c.margin == null ? '' :
+          '<div class="kv"><span>마진</span><b style="color:' + (c.margin >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
+            won(c.margin) + '원' + (c.marginPct == null ? '' : ' (' + c.marginPct + '%)') + '</b></div>') +
+        '<div class="kv"><span>누적 원가</span><b>' + usd(c.costUsdTotal) + ' <span style="font-size:11.5px; color:var(--muted)">(' + (c.calls || 0) + '회)</span></b></div>' +
+        '<div class="kv"><span>마지막 사용</span><b>' + (esc(c.lastUsed) || '—') + '</b></div>' +
         (gOver || kOver
           ? '<div class="note err show" style="margin:14px 0 0">현재 사용량이 상한을 넘습니다. 기존 키워드는 그대로 두고 <b>추가만</b> 막힙니다.</div>'
           : '') +
@@ -360,7 +389,36 @@ function renderCustomers(){
     '</div>';
   }).join('');
 
+  renderByCustomer();
   bindCustomerEvents();
+}
+
+/* 고객별 원가 표 — 비용 탭에서 쓴다.
+   원가가 큰 순으로 세워야 어느 고객이 문제인지 바로 보인다. */
+function renderByCustomer(){
+  var rows = CUSTOMERS.slice().sort(function(a, b){
+    return (Number(b.costKrw30) || 0) - (Number(a.costKrw30) || 0);
+  });
+  if (!rows.length){
+    $('byCust').innerHTML = '<tbody><tr><td class="empty">고객이 없습니다.</td></tr></tbody>';
+    return;
+  }
+  $('byCust').innerHTML =
+    '<thead><tr><th>고객</th><th>요금제</th><th class="num">월 요금</th>' +
+    '<th class="num">30일 원가</th><th class="num">호출</th><th class="num">마진</th></tr></thead><tbody>' +
+    rows.map(function(c){
+      var live = String(c.status || '') === '운영중';
+      return '<tr' + (live ? '' : ' style="opacity:.5"') + '>' +
+        '<td><b>' + esc(c.name || c.code) + '</b> <span style="color:var(--muted)">' + esc(c.code) + '</span>' +
+          (live ? '' : ' <span class="tag">정지</span>') + '</td>' +
+        '<td>' + esc(c.plan) + '</td>' +
+        '<td class="num">' + won(c.fee) + '</td>' +
+        '<td class="num">' + won(c.costKrw30) + '</td>' +
+        '<td class="num">' + (c.calls30 || 0) + '</td>' +
+        '<td class="num" style="color:' + (c.margin >= 0 ? 'var(--green)' : 'var(--red)') + '"><b>' +
+          (c.margin == null ? '—' : won(c.margin)) + '</b></td>' +
+      '</tr>';
+    }).join('') + '</tbody>';
 }
 
 function bindCustomerEvents(){
