@@ -34,11 +34,28 @@
     display:flex; flex-direction:column; gap:26px;
     position:sticky; top:0; height:100vh; overflow-y:auto;
   }
-  .brand{padding:2px 8px 0}
-  /* 홈페이지와 같은 워드마크. 's' 아래의 짧은 밑줄이 브랜드의 유일한 장식이다. */
-  .wordmark{position:relative; display:inline-block; font-size:19px; font-weight:300; letter-spacing:-.02em; color:var(--ink)}
-  .wordmark::after{content:''; position:absolute; left:0; bottom:-2px; width:12px; height:2px; background:var(--ink)}
-  .brand small{display:block; margin-top:11px; color:var(--muted); font-size:12px; font-weight:500}
+  .brand{padding:4px 8px 0; color:var(--ink)}
+  /* 워드마크. 's' 아래 2px 밑줄 하나가 지금 하는 일이고,
+     뒤로 흐려지며 이어지는 점들이 아직 오지 않은 일이다.
+     홈페이지의 '01 · 빈 02 칸'과 같은 말을 로고 안에서 한다.
+     색을 currentColor로 두어 흰 바탕에서도 검은 띠 위에서도 그대로 쓴다. */
+  .wordmark{
+    position:relative; display:inline-block; line-height:1.1;
+    font-size:24px; font-weight:300; letter-spacing:-.02em;
+  }
+  .wordmark::after{
+    content:''; position:absolute; left:0; bottom:-4px;
+    width:12px; height:2px; background:currentColor;
+  }
+  .wordmark::before{
+    content:''; position:absolute; left:17px; bottom:-4px;
+    width:20px; height:2px;
+    background:repeating-linear-gradient(to right, currentColor 0 2px, transparent 2px 7px);
+    opacity:.85;
+    -webkit-mask-image:linear-gradient(to right, #000 0%, transparent 92%);
+    mask-image:linear-gradient(to right, #000 0%, transparent 92%);
+  }
+  .brand small{display:block; margin-top:14px; color:var(--muted); font-size:12px; font-weight:500}
 
   .navlist{display:flex; flex-direction:column; gap:2px}
   .navlist .lbl{
