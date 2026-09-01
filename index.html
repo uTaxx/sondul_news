@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>손덜 키워드 뉴스</title>
+<style>
+  :root{
+    --bg:#F4F4F5; --card:#FFFFFF;
+    --line:#E8E8EA; --line-2:#D6D6DA;
+    --ink:#0A0A0B; --ink-2:#3F3F46; --muted:#8A8A93;
+    --violet:#6D4AFF; --green:#12B76A; --red:#F04438; --blue:#2E6BFF; --amber:#F79009;
+    --r:16px; --r-sm:10px; --r-pill:999px;
+    --sans:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans); background:var(--bg); color:var(--ink);
+    font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  button{font-family:inherit}
+
+  /* ---------- 레이아웃: 좌측 네비 + 본문 ---------- */
+  .shell{display:flex; min-height:100vh}
+
+  .nav{
+    width:248px; flex:0 0 248px; background:var(--card);
+    border-right:1px solid var(--line); padding:22px 16px;
+    display:flex; flex-direction:column; gap:26px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{display:flex; align-items:center; gap:10px; padding:0 6px}
+  .brand .mark{
+    width:30px; height:30px; border-radius:9px; background:var(--ink);
+    display:grid; place-items:center; color:#fff; font-weight:700; font-size:13px; letter-spacing:-.02em;
+  }
+  .brand b{font-size:15px; font-weight:700; letter-spacing:-.02em}
+  .brand small{display:block; color:var(--muted); font-size:11px; font-weight:500}
+
+  .navlist{display:flex; flex-direction:column; gap:2px}
+  .navlist .lbl{
+    padding:0 8px 6px; font-size:11px; font-weight:600;
+    color:var(--muted); letter-spacing:.04em; text-transform:uppercase;
+  }
+  .navitem{
+    display:flex; align-items:center; gap:10px; width:100%;
+    padding:9px 10px; border-radius:var(--r-sm); border:0; background:transparent;
+    font-size:13.5px; font-weight:500; color:var(--ink-2); cursor:pointer; text-align:left;
+  }
+  .navitem:hover{background:#F7F7F8}
+  .navitem.on{background:#F1F1F2; color:var(--ink); font-weight:600}
+  .navitem .dot{width:8px; height:8px; border-radius:50%; flex:0 0 8px}
+
+  .navfoot{margin-top:auto; border-top:1px solid var(--line); padding-top:14px}
+  .who{display:flex; align-items:center; gap:10px; padding:4px 6px}
+  .who .av{
+    width:32px; height:32px; border-radius:50%; background:#EFEFF1;
+    display:grid; place-items:center; font-weight:700; font-size:12px; color:var(--ink-2);
+  }
+  .who b{display:block; font-size:13px; font-weight:600; letter-spacing:-.01em}
+  .who span{display:block; font-size:11.5px; color:var(--muted)}
+
+  .main{flex:1; min-width:0; padding:30px 34px 70px}
+  .wrap{max-width:940px; margin:0 auto}
+
+  h1{font-size:27px; line-height:1.25; font-weight:700; letter-spacing:-.03em; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:13.5px; margin:0 0 22px}
+
+  /* ---------- 세그먼트 탭 ---------- */
+  .seg{
+    display:inline-flex; gap:4px; background:var(--card); padding:4px;
+    border:1px solid var(--line); border-radius:var(--r-pill); margin-bottom:22px;
+    max-width:100%; overflow-x:auto; scrollbar-width:none;
+  }
+  .seg::-webkit-scrollbar{display:none}
+  .seg button{
+    border:0; background:transparent; padding:7px 15px; border-radius:var(--r-pill);
+    font-size:13px; font-weight:600; color:var(--ink-2); cursor:pointer; white-space:nowrap;
+  }
+  .seg button.on{background:var(--ink); color:#fff}
+
+  /* ---------- 카드 ---------- */
+  .card{
+    background:var(--card); border:1px solid var(--line);
+    border-radius:var(--r); padding:20px; margin-bottom:14px;
+  }
+  .card h2{font-size:17px; font-weight:700; letter-spacing:-.02em; margin:0 0 4px}
+  .card .desc{color:var(--muted); font-size:13px; margin:0 0 16px}
+  .card .hr{height:1px; background:var(--line); margin:16px -20px 14px}
+
+  .rowhead{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+
+  /* ---------- 버튼 ---------- */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    padding:10px 16px; border-radius:var(--r-sm); border:1px solid var(--ink);
+    background:var(--ink); color:#fff; font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .btn:hover{opacity:.88}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .btn.ghost{background:var(--card); color:var(--ink); border-color:var(--line-2)}
+  .btn.ghost:hover{background:#FAFAFB; opacity:1}
+  .btn.full{width:100%}
+  .btn.sm{padding:6px 11px; font-size:12.5px; border-radius:8px}
+  .btn.danger{background:var(--red); border-color:var(--red)}
+
+  /* ---------- 폼 ---------- */
+  label.f{display:block; font-size:12.5px; font-weight:600; color:var(--ink-2); margin:0 0 6px}
+  .hint{font-size:12px; color:var(--muted); margin:6px 0 0}
+  input[type=text],input[type=email],input[type=date],input[type=number],select,textarea{
+    width:100%; padding:10px 12px; border:1px solid var(--line-2); border-radius:var(--r-sm);
+    font-family:inherit; font-size:13.5px; background:var(--card); color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid #DDD9FF; outline-offset:-1px; border-color:var(--violet)}
+  textarea{resize:vertical; min-height:70px}
+  .field{margin-bottom:14px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .chk{display:inline-flex; align-items:center; gap:7px; font-size:13px; cursor:pointer}
+  .chk input{width:15px; height:15px; accent-color:var(--ink)}
+
+  /* ---------- 기사 ---------- */
+  .art{border:1px solid var(--line); border-radius:var(--r); padding:16px 18px; margin-bottom:10px; background:var(--card)}
+  .art .top{display:flex; align-items:flex-start; gap:10px}
+  .art .t{font-size:14.5px; font-weight:650; letter-spacing:-.01em; line-height:1.45; flex:1; margin:0}
+  .art .t a{text-decoration:none}
+  .art .t a:hover{text-decoration:underline}
+  .art .meta{font-size:11.5px; color:var(--muted); margin:7px 0 0; display:flex; flex-wrap:wrap; gap:8px}
+  .art .why{
+    font-size:12.5px; color:var(--ink-2); margin:11px 0 0; padding:9px 11px;
+    background:#FAFAFB; border-radius:9px; border:1px solid var(--line);
+  }
+  .art .acts{display:flex; gap:7px; margin-top:12px}
+  .stars{color:var(--amber); font-size:12px; letter-spacing:1px}
+
+  .tag{
+    display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:var(--r-pill);
+    background:#F4F4F5; border:1px solid var(--line); font-size:11.5px; font-weight:600; color:var(--ink-2);
+  }
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block}
+
+  /* ---------- 상태/알림 ---------- */
+  .note{padding:12px 14px; border-radius:var(--r-sm); font-size:13px; margin-bottom:14px; display:none}
+  .note.show{display:block}
+  .note.ok{background:#ECFDF3; color:#05603A; border:1px solid #ABEFC6}
+  .note.err{background:#FEF3F2; color:#912018; border:1px solid #FECDCA}
+  .note.info{background:#F4F4F5; color:var(--ink-2); border:1px solid var(--line)}
+  .empty{padding:40px 16px; text-align:center; color:var(--muted); font-size:13px}
+
+  .meter{height:6px; border-radius:99px; background:#EFEFF1; overflow:hidden; margin-top:7px}
+  .meter i{display:block; height:100%; background:var(--ink); border-radius:99px}
+  .meter.warn i{background:var(--red)}
+
+  .kv{display:flex; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); font-size:13.5px}
+  .kv:last-child{border-bottom:0}
+  .kv span{color:var(--muted)}
+  .kv b{font-weight:650}
+
+  /* ---------- 그룹 편집기 ---------- */
+  .gcard{border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:12px; background:#FCFCFD}
+  .kwbox{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .kw{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 8px 5px 11px;
+    background:var(--card); border:1px solid var(--line-2); border-radius:var(--r-pill); font-size:12.5px;
+  }
+  .kw button{border:0; background:transparent; cursor:pointer; color:var(--muted); font-size:14px; line-height:1; padding:0}
+  .kw button:hover{color:var(--red)}
+
+  /* ---------- 로딩 ---------- */
+  .veil{
+    position:fixed; inset:0; background:rgba(244,244,245,.82); backdrop-filter:blur(3px);
+    display:none; place-items:center; z-index:60;
+  }
+  .veil.show{display:grid}
+  .veil .box{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:26px 30px; text-align:center; max-width:320px}
+  .spin{width:26px; height:26px; border:2.5px solid var(--line-2); border-top-color:var(--ink); border-radius:50%; margin:0 auto 12px; animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .view{display:none}
+  .view.on{display:block}
+
+  @media (max-width:860px){
+    .shell{flex-direction:column}
+    .nav{
+      width:100%; flex:none; height:auto; position:static; border-right:0;
+      border-bottom:1px solid var(--line); padding:14px; gap:14px;
+    }
+    .navlist{flex-direction:row; overflow-x:auto; gap:6px; scrollbar-width:none}
+    .navlist::-webkit-scrollbar{display:none}
+    .navlist .lbl{display:none}
+    .navitem{white-space:nowrap; padding:8px 12px}
+    .navfoot{margin-top:0; border-top:0; padding-top:0}
+    .main{padding:22px 16px 60px}
+    h1{font-size:22px}
+    .grid2{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ================= 좌측 네비 ================= -->
+  <aside class="nav">
+    <div class="brand">
+      <div class="mark">손</div>
+      <div>
+        <b>손덜 키워드 뉴스</b>
+        <small>Keyword News Briefing</small>
+      </div>
+    </div>
+
+    <nav class="navlist">
+      <div class="lbl">메뉴</div>
+      <button class="navitem on" data-view="articles"><i class="dot" style="background:var(--violet)"></i>기사 조회</button>
+      <button class="navitem" data-view="keywords"><i class="dot" style="background:var(--green)"></i>키워드 설정</button>
+      <button class="navitem" data-view="search"><i class="dot" style="background:var(--blue)"></i>키워드 검색</button>
+      <button class="navitem" data-view="plan"><i class="dot" style="background:var(--red)"></i>구독 관리</button>
+    </nav>
+
+    <div class="navfoot">
+      <div class="who">
+        <div class="av" id="avatar">?</div>
+        <div style="min-width:0">
+          <b id="whoName">미확인</b>
+          <span id="whoCode">코드를 입력해주세요</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= 본문 ================= -->
+  <main class="main">
+    <div class="wrap">
+
+      <h1 id="hello">안녕하세요 👋</h1>
+      <p class="sub" id="helloSub">구독 중인 키워드로 모은 기사를 확인하고 설정을 바꿀 수 있습니다.</p>
+
+      <!-- 코드 입력 -->
+      <div class="card" id="gateCard">
+        <div class="rowhead">
+          <div style="flex:1">
+            <h2>내 식별코드</h2>
+            <p class="desc">가입 시 받으신 식별코드를 넣으면 내 기사와 설정이 열립니다.</p>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field" style="margin:0">
+            <label class="f" for="code">식별코드</label>
+            <input type="text" id="code" placeholder="예: SN0001" autocomplete="off">
+          </div>
+          <div class="field" style="margin:0; display:flex; align-items:flex-end">
+            <button class="btn full" id="openBtn">열기</button>
+          </div>
+        </div>
+        <p class="hint">코드를 모르시면 담당자에게 문의해주세요.</p>
+      </div>
+
+      <div class="note" id="note"></div>
+
+      <!-- ===== 기사 조회 ===== -->
+      <section class="view on" id="v-articles">
+        <div class="seg" id="artSeg">
+          <button class="on" data-f="all">전체</button>
+          <button data-f="important">주요 기사</button>
+          <button data-f="pos">긍정</button>
+          <button data-f="neg">부정</button>
+        </div>
+
+        <div class="card">
+          <div class="rowhead">
+            <div style="flex:1">
+              <h2>수집된 기사</h2>
+              <p class="desc" id="artDesc" style="margin:0">식별코드를 열면 최근 수집한 기사가 여기에 나옵니다.</p>
+            </div>
+            <button class="btn ghost sm" id="instantBtn">지금 조회</button>
+          </div>
+        </div>
+
+        <div id="artList"><div class="empty">아직 불러온 기사가 없습니다.</div></div>
+      </section>
+
+      <!-- ===== 키워드 설정 ===== -->
+      <section class="view" id="v-keywords">
+        <div class="card">
+          <div class="rowhead">
+            <div style="flex:1">
+              <h2>키워드 그룹</h2>
+              <p class="desc" id="limitDesc">관심 주제별로 묶어서 관리합니다.</p>
+            </div>
+            <button class="btn ghost sm" id="addGroupBtn">그룹 추가</button>
+          </div>
+          <div class="meter" id="grpMeter"><i style="width:0%"></i></div>
+        </div>
+
+        <div id="groups"></div>
+
+        <div class="card">
+          <h2>발송 설정</h2>
+          <p class="desc">브리핑을 언제 어디로 받을지 정합니다.</p>
+          <div class="grid2">
+            <div class="field">
+              <label class="f" for="contactEmail">받을 이메일</label>
+              <input type="email" id="contactEmail" placeholder="name@example.com">
+            </div>
+            <div class="field">
+              <label class="f" for="newsChatId">텔레그램 chat ID</label>
+              <input type="text" id="newsChatId" placeholder="담당자가 등록해드립니다" readonly>
+            </div>
+          </div>
+          <div class="field">
+            <label class="f">발송 시각</label>
+            <div id="times" style="display:flex; flex-wrap:wrap; gap:8px"></div>
+          </div>
+          <label class="chk"><input type="checkbox" id="excludeWeekend" checked> 주말에는 보내지 않기</label>
+          <div class="hr"></div>
+          <button class="btn full" id="saveBtn">설정 저장</button>
+        </div>
+      </section>
+
+      <!-- ===== 키워드 검색 ===== -->
+      <section class="view" id="v-search">
+        <div class="card">
+          <h2>특정 키워드 조사</h2>
+          <p class="desc">등록한 그룹과 별개로, 지금 궁금한 키워드를 바로 찾아봅니다.</p>
+          <div class="field">
+            <label class="f" for="q">키워드</label>
+            <input type="text" id="q" placeholder="예: 데이터센터 전력">
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label class="f" for="dFrom">시작일</label>
+              <input type="date" id="dFrom">
+            </div>
+            <div class="field">
+              <label class="f" for="dTo">종료일</label>
+              <input type="date" id="dTo">
+            </div>
+          </div>
+          <div class="field">
+            <label class="f">조회 대상</label>
+            <div style="display:flex; flex-wrap:wrap; gap:14px">
+              <label class="chk"><input type="checkbox" id="srcGoogle" checked> 구글 뉴스</label>
+              <label class="chk"><input type="checkbox" id="srcNaver" checked> 네이버 뉴스</label>
+              <label class="chk"><input type="checkbox" id="srcGoogleEn"> 구글 영문</label>
+            </div>
+          </div>
+          <div class="hr"></div>
+          <button class="btn full" id="searchBtn">조사 시작</button>
+        </div>
+        <div id="searchOut"></div>
+      </section>
+
+      <!-- ===== 구독 관리 ===== -->
+      <section class="view" id="v-plan">
+        <div class="card">
+          <h2>구독 상태</h2>
+          <p class="desc">이용 기간과 요금제를 확인합니다.</p>
+          <div id="planBox">
+            <div class="empty">식별코드를 열면 표시됩니다.</div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>결제 안내</h2>
+          <p class="desc">입금 후 텔레그램에서 <b>입금 완료</b> 버튼을 눌러주시면 확인 후 기간이 연장됩니다.</p>
+          <div class="note info show" style="margin:0">
+            만료 3일 전부터 텔레그램으로 안내를 보내드립니다. 안내 메시지의 버튼을 눌러주세요.
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="veil" id="veil">
+  <div class="box">
+    <div class="spin"></div>
+    <b id="veilT">불러오는 중</b>
+    <p class="hint" id="veilS" style="margin-top:4px">잠시만 기다려주세요.</p>
+  </div>
+</div>
+
+<script>
+/* ================= 설정 ================= */
+var BASE = 'https://sondullab.app.n8n.cloud/webhook/';
+var URLS = {
+  lookup:   BASE + 'sondul-lookup',
+  intake:   BASE + 'sondul-intake',
+  instant:  BASE + 'sondul-instant',
+  articles: BASE + 'sondul-articles',
+  adhoc:    BASE + 'sondul-adhoc-search',
+  feedback: BASE + 'sondul-feedback'
+};
+var SEND_TIMES = ['07:00','08:00','09:00','11:00','13:00','16:00','18:00'];
+
+/* ================= 상태 ================= */
+var S = {
+  code: '', token: '',
+  groups: [],
+  articles: [],
+  filter: 'all',
+  limits: { maxGroups: 3, maxKeywords: 10 },
+  plan: null
+};
+
+/* ================= 유틸 ================= */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function note(msg, kind){
+  var n = $('note');
+  n.className = 'note show ' + (kind || 'info');
+  n.textContent = msg;
+  if (kind === 'ok') setTimeout(function(){ n.className = 'note'; }, 4000);
+}
+function veil(on, t, s){
+  $('veil').classList.toggle('show', !!on);
+  if (t) $('veilT').textContent = t;
+  if (s) $('veilS').textContent = s;
+}
+function post(url, body){
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ token: S.token }, body))
+  }).then(function(r){ return r.json(); });
+}
+function stars(n){
+  n = Number(n) || 0;
+  if (n <= 2) return '';
+  return new Array(Math.min(n - 2, 3) + 1).join('★');
+}
+
+/* ================= 네비 ================= */
+Array.prototype.forEach.call(document.querySelectorAll('.navitem'), function(b){
+  b.addEventListener('click', function(){
+    Array.prototype.forEach.call(document.querySelectorAll('.navitem'), function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    Array.prototype.forEach.call(document.querySelectorAll('.view'), function(v){ v.classList.remove('on'); });
+    $('v-' + b.dataset.view).classList.add('on');
+    window.scrollTo(0, 0);
+  });
+});
+
+/* ================= 코드 열기 ================= */
+function openCode(){
+  var code = $('code').value.trim().toUpperCase();
+  if (!code){ note('식별코드를 입력해주세요.', 'err'); return; }
+  S.code = code;
+  try { localStorage.setItem('sondul_code', code); } catch (e) {}
+
+  $('avatar').textContent = code.slice(0, 2);
+  $('whoName').textContent = code;
+  $('whoCode').textContent = '구독 중';
+
+  veil(true, '설정을 불러오는 중', '잠시만 기다려주세요.');
+  post(URLS.lookup, { code: code })
+    .then(function(d){
+      veil(false);
+      if (d && d.error){ note(d.error, 'err'); return; }
+      applySettings(d || {});
+      note('설정을 불러왔습니다.', 'ok');
+      loadArticles();
+    })
+    .catch(function(){
+      veil(false);
+      note('설정을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.', 'err');
+    });
+}
+$('openBtn').addEventListener('click', openCode);
+$('code').addEventListener('keydown', function(e){ if (e.key === 'Enter') openCode(); });
+
+/* ================= 설정 반영 ================= */
+function applySettings(d){
+  if (d.customerName || d.company) {
+    $('hello').textContent = '안녕하세요, ' + (d.customerName || d.company) + '님 👋';
+    $('whoName').textContent = d.customerName || d.company;
+  }
+  S.limits.maxGroups   = Number(d.maxGroups || d['최대그룹수'] || 3);
+  S.limits.maxKeywords = Number(d.maxKeywords || d['그룹당최대키워드'] || 10);
+
+  var raw = d.groups || d['그룹키워드JSON'] || [];
+  if (typeof raw === 'string'){ try { raw = JSON.parse(raw); } catch (e) { raw = []; } }
+  S.groups = Array.isArray(raw) ? raw : [];
+
+  if (d.contactEmail) $('contactEmail').value = d.contactEmail;
+  if (d.newsChatId) $('newsChatId').value = d.newsChatId;
+  if (typeof d.excludeWeekend !== 'undefined') $('excludeWeekend').checked = !!d.excludeWeekend;
+
+  S.plan = {
+    plan:    d.plan || d['요금제'] || '기본',
+    expires: d.expires || d['만료일'] || '',
+    status:  d.payStatus || d['결제상태'] || '',
+    joined:  d.joined || d['가입일'] || ''
+  };
+
+  renderTimes(d.sendTimes || d['발송시각'] || '');
+  renderGroups();
+  renderPlan();
+}
+
+/* ================= 발송 시각 ================= */
+function renderTimes(sel){
+  var picked = {};
+  String(sel || '').split(',').forEach(function(t){ picked[t.trim()] = true; });
+  $('times').innerHTML = SEND_TIMES.map(function(t){
+    return '<label class="chk"><input type="checkbox" class="tm" value="' + t + '"' +
+      (picked[t] ? ' checked' : '') + '> ' + t + '</label>';
+  }).join('');
+}
+
+/* ================= 그룹 편집 ================= */
+function renderGroups(){
+  var host = $('groups');
+  var kwTotal = S.groups.reduce(function(a, g){ return a + ((g.keywords || []).length); }, 0);
+
+  $('limitDesc').textContent =
+    '그룹 ' + S.groups.length + ' / ' + S.limits.maxGroups +
+    ' · 그룹당 키워드 최대 ' + S.limits.maxKeywords + '개 (현재 총 ' + kwTotal + '개)';
+
+  var pct = Math.min(100, Math.round(S.groups.length / S.limits.maxGroups * 100));
+  var m = $('grpMeter');
+  m.classList.toggle('warn', S.groups.length > S.limits.maxGroups);
+  m.firstElementChild.style.width = pct + '%';
+
+  $('addGroupBtn').disabled = S.groups.length >= S.limits.maxGroups;
+
+  if (!S.groups.length){
+    host.innerHTML = '<div class="card"><div class="empty">아직 그룹이 없습니다. 위의 <b>그룹 추가</b>를 눌러 시작해보세요.</div></div>';
+    return;
+  }
+
+  host.innerHTML = S.groups.map(function(g, i){
+    var kws = g.keywords || [];
+    var over = kws.length >= S.limits.maxKeywords;
+    return '' +
+      '<div class="gcard">' +
+        '<div class="rowhead">' +
+          '<input type="text" class="gname" data-i="' + i + '" value="' + esc(g.name || '') +
+            '" placeholder="그룹 이름" style="font-weight:650; max-width:320px">' +
+          '<button class="btn ghost sm gdel" data-i="' + i + '">삭제</button>' +
+        '</div>' +
+        '<div class="field" style="margin:12px 0 0">' +
+          '<label class="f">이 그룹으로 무엇을 보고 싶으신가요?</label>' +
+          '<textarea class="gpurpose" data-i="' + i + '" placeholder="예: 경쟁사 신제품과 가격 정책 동향">' + esc(g.purpose || '') + '</textarea>' +
+          '<p class="hint">적어주실수록 AI가 더 정확하게 걸러냅니다.</p>' +
+        '</div>' +
+        '<div class="field" style="margin:12px 0 0">' +
+          '<label class="f">키워드 <span style="color:var(--muted); font-weight:500">' + kws.length + ' / ' + S.limits.maxKeywords + '</span></label>' +
+          '<div class="kwbox">' +
+            kws.map(function(k, j){
+              return '<span class="kw">' + esc(k) +
+                '<button class="kwdel" data-i="' + i + '" data-j="' + j + '" title="삭제">×</button></span>';
+            }).join('') +
+          '</div>' +
+          '<div style="display:flex; gap:8px; margin-top:10px">' +
+            '<input type="text" class="kwin" data-i="' + i + '" placeholder="' +
+              (over ? '상한에 도달했습니다' : '키워드 입력 후 Enter') + '"' + (over ? ' disabled' : '') + '>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }).join('');
+
+  bindGroupEvents();
+}
+
+function bindGroupEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('.gname'), function(el){
+    el.addEventListener('input', function(){ S.groups[+el.dataset.i].name = el.value; });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.gpurpose'), function(el){
+    el.addEventListener('input', function(){ S.groups[+el.dataset.i].purpose = el.value; });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.gdel'), function(el){
+    el.addEventListener('click', function(){
+      if (!confirm('이 그룹을 삭제할까요?')) return;
+      S.groups.splice(+el.dataset.i, 1);
+      renderGroups();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.kwdel'), function(el){
+    el.addEventListener('click', function(){
+      S.groups[+el.dataset.i].keywords.splice(+el.dataset.j, 1);
+      renderGroups();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.kwin'), function(el){
+    el.addEventListener('keydown', function(e){
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var v = el.value.trim();
+      if (!v) return;
+      var g = S.groups[+el.dataset.i];
+      g.keywords = g.keywords || [];
+      if (g.keywords.length >= S.limits.maxKeywords){
+        note('키워드는 그룹당 ' + S.limits.maxKeywords + '개까지입니다.', 'err');
+        return;
+      }
+      if (g.keywords.indexOf(v) !== -1){ note('이미 있는 키워드입니다.', 'err'); return; }
+      g.keywords.push(v);
+      renderGroups();
+    });
+  });
+}
+
+$('addGroupBtn').addEventListener('click', function(){
+  if (S.groups.length >= S.limits.maxGroups){
+    note('그룹은 ' + S.limits.maxGroups + '개까지입니다. 더 필요하시면 담당자에게 문의해주세요.', 'err');
+    return;
+  }
+  S.groups.push({ name: '', purpose: '', keywords: [], urgent: false, googleEn: false });
+  renderGroups();
+});
+
+/* ================= 설정 저장 ================= */
+$('saveBtn').addEventListener('click', function(){
+  if (!S.code){ note('먼저 식별코드를 열어주세요.', 'err'); return; }
+
+  if (S.groups.length > S.limits.maxGroups){
+    note('그룹이 상한(' + S.limits.maxGroups + '개)을 넘습니다.', 'err'); return;
+  }
+  for (var i = 0; i < S.groups.length; i++){
+    var g = S.groups[i];
+    if (!g.name || !g.name.trim()){ note((i + 1) + '번째 그룹의 이름을 입력해주세요.', 'err'); return; }
+    if (!(g.keywords || []).length){ note('"' + g.name + '" 그룹에 키워드가 없습니다.', 'err'); return; }
+    if (g.keywords.length > S.limits.maxKeywords){
+      note('"' + g.name + '" 그룹의 키워드가 상한을 넘습니다.', 'err'); return;
+    }
+  }
+
+  var times = [];
+  Array.prototype.forEach.call(document.querySelectorAll('.tm'), function(c){ if (c.checked) times.push(c.value); });
+  if (!times.length){ note('발송 시각을 1개 이상 선택해주세요.', 'err'); return; }
+
+  var btn = $('saveBtn');
+  btn.disabled = true; btn.textContent = '저장 중...';
+  veil(true, '설정을 저장하는 중', '잠시만 기다려주세요.');
+
+  post(URLS.intake, {
+    requestType: 'change',
+    identifierCode: S.code,
+    contactEmail: $('contactEmail').value.trim(),
+    newsChatId: $('newsChatId').value.trim(),
+    sendTimes: times,
+    excludeWeekend: $('excludeWeekend').checked,
+    groups: S.groups
+  })
+    .then(function(d){
+      veil(false); btn.disabled = false; btn.textContent = '설정 저장';
+      if (d && d.error){ note(d.error, 'err'); return; }
+      note('저장했습니다. 다음 수집부터 반영됩니다.', 'ok');
+    })
+    .catch(function(){
+      veil(false); btn.disabled = false; btn.textContent = '설정 저장';
+      note('저장하지 못했습니다. 잠시 후 다시 시도해주세요.', 'err');
+    });
+});
+
+/* ================= 기사 ================= */
+function loadArticles(){
+  if (!S.code) return;
+  veil(true, '기사를 불러오는 중', '잠시만 기다려주세요.');
+  post(URLS.articles, { code: S.code })
+    .then(function(d){
+      veil(false);
+      if (d && d.error){ note(d.error, 'err'); return; }
+      S.articles = (d && d.articles) || [];
+      $('artDesc').textContent = '최근 수집 ' + S.articles.length + '건';
+      renderArticles();
+    })
+    .catch(function(){ veil(false); note('기사를 불러오지 못했습니다.', 'err'); });
+}
+
+function renderArticles(){
+  var list = S.articles.filter(function(a){
+    if (S.filter === 'important') return Number(a.importance) >= 3;
+    if (S.filter === 'pos') return a.direction === '긍정';
+    if (S.filter === 'neg') return a.direction === '부정';
+    return true;
+  });
+
+  if (!list.length){
+    $('artList').innerHTML = '<div class="card"><div class="empty">해당하는 기사가 없습니다.</div></div>';
+    return;
+  }
+
+  $('artList').innerHTML = list.map(function(a){
+    var col = a.direction === '긍정' ? 'var(--green)' : (a.direction === '부정' ? 'var(--red)' : 'var(--muted)');
+    var st = stars(a.importance);
+    return '' +
+      '<article class="art">' +
+        '<div class="top">' +
+          '<i class="dot" style="background:' + col + '; margin-top:7px"></i>' +
+          '<p class="t"><a href="' + esc(a.link) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a>' +
+            (st ? ' <span class="stars">' + st + '</span>' : '') + '</p>' +
+        '</div>' +
+        '<div class="meta">' +
+          '<span class="tag">' + esc(a.group || '기타') + '</span>' +
+          (a.matched ? '<span>키워드 ' + esc(a.matched) + '</span>' : '') +
+          (a.pubDate ? '<span>' + esc(a.pubDate) + '</span>' : '') +
+        '</div>' +
+        (a.reason ? '<p class="why">' + esc(a.reason) + '</p>' : '') +
+        '<div class="acts">' +
+          '<button class="btn ghost sm fb" data-v="중요" data-link="' + esc(a.link) +
+            '" data-g="' + esc(a.group || '') + '" data-t="' + esc(a.title) + '">도움됐어요</button>' +
+          '<button class="btn ghost sm fb" data-v="제외" data-link="' + esc(a.link) +
+            '" data-g="' + esc(a.group || '') + '" data-t="' + esc(a.title) + '">필요없어요</button>' +
+        '</div>' +
+      '</article>';
+  }).join('');
+
+  Array.prototype.forEach.call(document.querySelectorAll('.fb'), function(b){
+    b.addEventListener('click', function(){
+      b.disabled = true; b.textContent = '반영됨';
+      post(URLS.feedback, {
+        code: S.code, link: b.dataset.link, group: b.dataset.g,
+        title: b.dataset.t, verdict: b.dataset.v
+      }).catch(function(){});
+    });
+  });
+}
+
+Array.prototype.forEach.call($('artSeg').querySelectorAll('button'), function(b){
+  b.addEventListener('click', function(){
+    Array.prototype.forEach.call($('artSeg').querySelectorAll('button'), function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    S.filter = b.dataset.f;
+    renderArticles();
+  });
+});
+
+$('instantBtn').addEventListener('click', function(){
+  if (!S.code){ note('먼저 식별코드를 열어주세요.', 'err'); return; }
+  var b = $('instantBtn');
+  b.disabled = true; b.textContent = '조회 중';
+  veil(true, '지금 기사를 모으는 중', '최대 1~2분 걸릴 수 있습니다.');
+  post(URLS.instant, { code: S.code })
+    .then(function(){
+      veil(false); b.disabled = false; b.textContent = '지금 조회';
+      note('조회를 마쳤습니다. 목록을 새로 불러옵니다.', 'ok');
+      loadArticles();
+    })
+    .catch(function(){
+      veil(false); b.disabled = false; b.textContent = '지금 조회';
+      note('조회에 실패했습니다.', 'err');
+    });
+});
+
+/* ================= 키워드 검색 ================= */
+$('searchBtn').addEventListener('click', function(){
+  if (!S.code){ note('먼저 식별코드를 열어주세요.', 'err'); return; }
+  var kw = $('q').value.trim();
+  if (!kw){ note('키워드를 입력해주세요.', 'err'); return; }
+
+  var sources = [];
+  if ($('srcGoogle').checked) sources.push('google');
+  if ($('srcNaver').checked) sources.push('naver');
+  if ($('srcGoogleEn').checked) sources.push('google_en');
+  if (!sources.length){ note('조회 대상을 1개 이상 선택해주세요.', 'err'); return; }
+
+  var b = $('searchBtn');
+  b.disabled = true; b.textContent = '조사 중...';
+  veil(true, '"' + kw + '" 조사 중', '최대 1~2분 걸릴 수 있습니다.');
+  $('searchOut').innerHTML = '';
+
+  post(URLS.adhoc, {
+    code: S.code, keyword: kw,
+    dateFrom: $('dFrom').value, dateTo: $('dTo').value,
+    sources: sources
+  })
+    .then(function(d){
+      veil(false); b.disabled = false; b.textContent = '조사 시작';
+      var arts = (d && d.articles) || [];
+      if (!arts.length){
+        $('searchOut').innerHTML = '<div class="card"><div class="empty">"' + esc(kw) + '" 관련 기사를 찾지 못했습니다.</div></div>';
+        return;
+      }
+      $('searchOut').innerHTML =
+        '<div class="card"><h2>결과 ' + arts.length + '건</h2><p class="desc" style="margin:0">"' + esc(kw) + '"</p></div>' +
+        arts.map(function(a){
+          return '<article class="art">' +
+            '<p class="t"><a href="' + esc(a.link) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a></p>' +
+            '<div class="meta">' + (a.pubDate ? '<span>' + esc(a.pubDate) + '</span>' : '') + '</div>' +
+            (a.reason ? '<p class="why">' + esc(a.reason) + '</p>' : '') +
+          '</article>';
+        }).join('');
+    })
+    .catch(function(){
+      veil(false); b.disabled = false; b.textContent = '조사 시작';
+      note('조사에 실패했습니다.', 'err');
+    });
+});
+
+/* ================= 구독 ================= */
+function renderPlan(){
+  if (!S.plan){ return; }
+  var p = S.plan;
+  var left = '';
+  if (p.expires){
+    var d = new Date(p.expires);
+    if (!isNaN(d)){
+      var diff = Math.ceil((d - new Date().setHours(0,0,0,0)) / 86400000);
+      left = diff < 0 ? '만료됨' : (diff === 0 ? '오늘 만료' : diff + '일 남음');
+    }
+  }
+  var warn = /만료/.test(left);
+  $('planBox').innerHTML =
+    '<div class="kv"><span>요금제</span><b>' + esc(p.plan) + '</b></div>' +
+    '<div class="kv"><span>만료일</span><b>' + (esc(p.expires) || '—') +
+      (left ? ' <span class="tag" style="' + (warn ? 'color:var(--red)' : '') + '">' + esc(left) + '</span>' : '') + '</b></div>' +
+    '<div class="kv"><span>결제 상태</span><b>' + (esc(p.status) || '—') + '</b></div>' +
+    '<div class="kv"><span>그룹 상한</span><b>' + S.limits.maxGroups + '개</b></div>' +
+    '<div class="kv"><span>그룹당 키워드</span><b>' + S.limits.maxKeywords + '개</b></div>';
+}
+
+/* ================= 시작 ================= */
+(function init(){
+  var qs = new URLSearchParams(location.search);
+  var c = qs.get('c') || '';
+  S.token = qs.get('t') || '';
+  if (!c){ try { c = localStorage.getItem('sondul_code') || ''; } catch (e) {} }
+  if (c){ $('code').value = c; openCode(); }
+
+  var t = new Date(), f = new Date(t.getTime() - 7 * 86400000);
+  $('dTo').value = t.toISOString().slice(0, 10);
+  $('dFrom').value = f.toISOString().slice(0, 10);
+})();
+</script>
+</body>
+</html>
