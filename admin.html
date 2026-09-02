@@ -123,6 +123,24 @@
   /* 붉은색은 손해가 나는 숫자에만 쓴다 */
   .bad{color:var(--warn)}
 
+  /* 한도 막대 — 채움의 길이로만 말한다. 넘었을 때만 붉어진다. */
+  .meter{margin:0 0 4px}
+  .meter .lab{display:flex; align-items:baseline; gap:8px; margin-bottom:8px}
+  .meter .lab b{font-size:14.5px; font-weight:650; letter-spacing:-.01em}
+  .meter .lab .of{margin-left:auto; font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .meter .track{position:relative; height:8px; border-radius:var(--r-pill); background:var(--bg); border:1px solid var(--line); overflow:hidden}
+  .meter .fill{height:100%; background:var(--ink); border-radius:var(--r-pill)}
+  .meter.over .fill{background:var(--warn)}
+  .meter .foot{display:flex; gap:10px; margin-top:8px; font-size:12px; color:var(--muted)}
+  .meter .foot .r{margin-left:auto; font-variant-numeric:tabular-nums}
+  .meter.over .foot .r{color:var(--warn); font-weight:650}
+
+  /* 근거를 밝히는 줄. 추정인지 실측인지 여기서 말한다. */
+  .basis{font-size:11.5px; line-height:1.6; color:var(--muted); margin-top:12px;
+         padding-top:12px; border-top:1px solid var(--line)}
+  .warnbox{border:1px solid var(--warn); border-radius:var(--r-sm); padding:11px 13px;
+           font-size:12.5px; line-height:1.65; color:var(--warn); margin-top:12px}
+
   table{width:100%; border-collapse:collapse; font-size:12.5px}
   th,td{text-align:left; padding:9px 8px; border-bottom:1px solid var(--line)}
   th{color:var(--muted); font-weight:600; font-size:11.5px}
@@ -177,6 +195,7 @@
     <div class="seg" id="seg">
       <button class="on" data-v="customers">고객</button>
       <button data-v="cost">API 비용</button>
+      <button data-v="usage">한도</button>
     </div>
 
     <div class="note" id="note"></div>
@@ -256,6 +275,44 @@
         <div class="scroll"><table id="recent"><tbody><tr><td class="empty">불러오는 중</td></tr></tbody></table></div>
       </div>
     </div>
+
+    <!-- 한도 -->
+    <div class="view" id="v-usage">
+      <p class="sub" id="usageAsOf" style="margin:-6px 0 14px">불러오는 중</p>
+
+      <div class="card">
+        <h2>n8n 실행</h2>
+        <p class="desc">요금제에 걸리는 유일한 한도입니다. 넘으면 워크플로가 멈춥니다.</p>
+        <div id="mN8n"><div class="empty">불러오는 중</div></div>
+        <div id="n8nWarn"></div>
+      </div>
+
+      <div class="card">
+        <h2>무엇이 실행을 쓰고 있나</h2>
+        <p class="desc">이번 달, 워크플로별. 줄이려면 위에서부터 봅니다.</p>
+        <div class="scroll"><table id="wfTable"><tbody><tr><td class="empty">불러오는 중</td></tr></tbody></table></div>
+        <div id="modeRow" class="basis"></div>
+      </div>
+
+      <div class="card">
+        <h2>Claude API</h2>
+        <p class="desc">쓴 만큼 내는 구조라 막히지는 않습니다. 새는 곳을 보는 용도입니다.</p>
+        <div id="mClaude"><div class="empty">불러오는 중</div></div>
+        <div id="claudeModels" class="basis"></div>
+      </div>
+
+      <div class="card">
+        <h2>네이버 뉴스 검색</h2>
+        <p class="desc">등록된 키워드로 계산한 하루 호출 수입니다.</p>
+        <div id="mNaver"><div class="empty">불러오는 중</div></div>
+        <div class="scroll" style="margin-top:12px"><table id="naverTable"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>고객과 매출</h2>
+        <div id="usageCust"><div class="empty">불러오는 중</div></div>
+      </div>
+    </div>
   </section>
 </div>
 
@@ -270,7 +327,8 @@ var URLS = {
   customers: BASE + 'sondul-admin-customers',
   update:    BASE + 'sondul-admin-update',
   cost:      BASE + 'sondul-api-cost',
-  create:    BASE + 'sondul-admin-create'
+  create:    BASE + 'sondul-admin-create',
+  usage:     BASE + 'sondul-usage'
 };
 
 /* 비밀번호는 메모리에만 둔다. 새로고침하면 다시 입력해야 하지만,
@@ -352,6 +410,7 @@ Array.prototype.forEach.call($('seg').querySelectorAll('button'), function(b){
     Array.prototype.forEach.call(document.querySelectorAll('.view'), function(v){ v.classList.remove('on'); });
     $('v-' + b.dataset.v).classList.add('on');
     if (b.dataset.v === 'cost' && !$('recent').dataset.loaded) loadCost();
+    if (b.dataset.v === 'usage' && !$('wfTable').dataset.loaded) loadUsage();
   });
 });
 
@@ -668,6 +727,144 @@ function loadCost(){
         : '<tbody><tr><td class="empty">기록이 없습니다.</td></tr></tbody>';
     })
     .catch(function(){ veil(false); note('비용을 불러오지 못했습니다.', 'err'); });
+}
+
+/* ================= 한도 ================= */
+/* 숫자는 전부 서버가 만든 것을 그대로 쓴다. 여기서 다시 계산하면
+   같은 값이 두 곳에서 갈라진다. 이 함수들은 그리기만 한다. */
+function meter(opts){
+  var used = Number(opts.used) || 0;
+  var lim = Number(opts.limit) || 0;
+  var pct = lim > 0 ? (used / lim) * 100 : 0;
+  var over = lim > 0 && used > lim;
+  return '<div class="meter' + (over ? ' over' : '') + '">' +
+    '<div class="lab"><b>' + esc(opts.title) + '</b>' +
+      '<span class="of">' + esc(opts.usedLabel) + (lim > 0 ? ' / ' + esc(opts.limitLabel) : '') + '</span></div>' +
+    '<div class="track"><div class="fill" style="width:' + Math.max(0, Math.min(100, pct)).toFixed(1) + '%"></div></div>' +
+    '<div class="foot"><span>' + esc(opts.foot || '') + '</span>' +
+      (lim > 0 ? '<span class="r">' + (pct >= 999 ? '999+' : pct.toFixed(0)) + '%</span>' : '') +
+    '</div></div>';
+}
+
+function loadUsage(){
+  veil(true, '사용량을 불러오는 중');
+  post(URLS.usage, {})
+    .then(function(d){
+      veil(false);
+      if (!d || d.error){ note((d && d.error) || '사용량을 불러오지 못했습니다.', 'err'); return; }
+      $('wfTable').dataset.loaded = '1';
+
+      $('usageAsOf').textContent = d.month + ' 기준 · ' + d.asOf + ' 현재';
+
+      /* ── n8n ── */
+      var e = d.n8n || {};
+      $('mN8n').innerHTML =
+        meter({
+          title: '이번 달 실행', used: e.month, limit: e.limit,
+          usedLabel: won(e.month) + '회', limitLabel: won(e.limit) + '회',
+          foot: '오늘 ' + won(e.today) + '회 · 하루 평균 ' + won(e.perDay) + '회'
+        }) +
+        meter({
+          title: '이대로 가면 월말', used: e.projected, limit: e.limit,
+          usedLabel: won(e.projected) + '회', limitLabel: won(e.limit) + '회',
+          foot: '하루 ' + won(e.perDay) + '회 × ' + d.daysInMonth + '일'
+        });
+
+      var w = '';
+      if (e.truncated){
+        w += '<div class="basis">n8n이 실행 기록을 ' + won(e.windowDays) + '일치(' + won(e.keptCount) +
+             '건)만 남겨두고 지웠습니다. <b>이번 달 누적은 그 앞부분이 빠진 숫자</b>입니다. ' +
+             '하루 평균과 월말 예상은 남아 있는 기간 안에서 따로 재므로 영향받지 않습니다.</div>';
+      }
+      if (e.limit > 0 && e.projected > e.limit){
+        w += '<div class="warnbox">이 속도면 이번 달 <b>' + won(e.projected) + '회</b>로 한도 ' +
+             won(e.limit) + '회를 넘습니다. 아래 표에서 위에 있는 것부터 주기를 늘리거나 꺼야 합니다.</div>';
+      }
+      $('n8nWarn').innerHTML = w;
+
+      var bw = e.byWorkflow || [];
+      $('wfTable').innerHTML = bw.length
+        ? '<thead><tr><th>워크플로</th><th class="num">이번 달</th><th class="num">몫</th></tr></thead><tbody>' +
+          bw.map(function(x){
+            var share = e.month > 0 ? (x.count / e.month) * 100 : 0;
+            return '<tr><td><a href="https://sondullab.app.n8n.cloud/workflow/' + esc(x.id) +
+              '" target="_blank" rel="noopener">' + esc(x.name) + '</a></td>' +
+              '<td class="num">' + won(x.count) + '</td>' +
+              '<td class="num">' + share.toFixed(0) + '%</td></tr>';
+          }).join('') + '</tbody>'
+        : '<tbody><tr><td class="empty">기록이 없습니다.</td></tr></tbody>';
+
+      var bm = e.byMode || [];
+      $('modeRow').innerHTML = bm.length
+        ? '무엇이 깨웠나 — ' + bm.map(function(m){ return esc(m.label) + ' ' + won(m.count) + '회'; }).join(' · ') +
+          '. 여기 있는 <b>수동</b>은 편집기에서 눌러 돌린 것으로, 보통 요금제 실행 수에는 들어가지 않습니다.'
+        : '';
+
+      /* ── Claude ── */
+      var c = d.claude || {};
+      $('mClaude').innerHTML = c.budget > 0
+        ? meter({
+            title: '이번 달 비용', used: c.month, limit: c.budget,
+            usedLabel: usd(c.month), limitLabel: usd(c.budget),
+            foot: '오늘 ' + usd(c.today) + ' · 이대로면 월말 ' + usd(c.projected)
+          })
+        : '<div class="stat" style="margin:0">' +
+          '<div class="s"><span>이번 달</span><b>' + usd(c.month) + '</b></div>' +
+          '<div class="s"><span>이대로면 월말</span><b>' + usd(c.projected) + '</b></div>' +
+          '<div class="s"><span>오늘</span><b>' + usd(c.today) + '</b></div>' +
+          '<div class="s"><span>이번 달 호출</span><b>' + won(c.calls) + '</b></div>' +
+          '</div>';
+
+      var byModel = c.byModel || [];
+      $('claudeModels').innerHTML =
+        (byModel.length
+          ? '모델별 — ' + byModel.map(function(m){ return esc(m.model) + ' ' + usd(m.cost) + '(' + won(m.calls) + '회)'; }).join(' · ')
+          : '이번 달 기록이 없습니다.') +
+        (c.budget > 0 ? '' : '<br>월 예산을 정하려면 운영설정 시트에 <b>claude_월예산USD</b> 행을 넣으세요. 그러면 여기에도 막대가 생깁니다.');
+
+      /* ── 네이버 ── */
+      var v = d.naver || {};
+      $('mNaver').innerHTML =
+        meter({
+          title: '하루 호출', used: v.perDay, limit: v.limitDay,
+          usedLabel: won(v.perDay) + '회', limitLabel: won(v.limitDay) + '회',
+          foot: '정기 발송 한 번에 ' + won(v.perRun) + '회'
+        }) +
+        meter({
+          title: '한 달 호출', used: v.perMonth, limit: v.limitMonth,
+          usedLabel: won(v.perMonth) + '회', limitLabel: won(v.limitMonth) + '회',
+          foot: '하루 ' + won(v.perDay) + '회 × ' + d.daysInMonth + '일'
+        });
+
+      var nb = v.byCustomer || [];
+      $('naverTable').innerHTML = nb.length
+        ? '<thead><tr><th>고객</th><th class="num">한 번에</th></tr></thead><tbody>' +
+          nb.map(function(x){
+            return '<tr><td>' + esc(x.name || x.code) + ' <span style="color:var(--muted)">' + esc(x.code) + '</span></td>' +
+              '<td class="num">' + won(x.calls) + '회</td></tr>';
+          }).join('') + '</tbody>' +
+          '<tfoot><tr><td colspan="2" class="basis" style="border:0">' +
+          '실제로 부른 횟수를 센 것이 아니라 <b>등록된 키워드로 계산한 값</b>입니다. ' +
+          '검색어 하나에 한 번 부르고, 같은 그룹 안의 같은 검색어는 한 번으로 칩니다. ' +
+          '고객이 대시보드에서 직접 돌리는 즉시 조회는 여기에 없습니다.' +
+          '</td></tr></tfoot>'
+        : '<tbody><tr><td class="empty">키워드를 등록한 고객이 없습니다.</td></tr></tbody>';
+
+      /* ── 고객 ── */
+      var cu = d.customers || {};
+      $('usageCust').innerHTML =
+        '<div class="stat" style="margin:0 0 12px">' +
+        '<div class="s"><span>운영 중</span><b>' + won(cu.live) + '명</b></div>' +
+        '<div class="s"><span>전체</span><b>' + won(cu.total) + '명</b></div>' +
+        '<div class="s"><span>월 매출</span><b>' + won(cu.revenue) + '원</b></div>' +
+        '</div>' +
+        ((cu.byPay || []).length
+          ? (cu.byPay).map(function(p){
+              return '<div class="kv"><span>' + esc(p.state) + '</span><b>' + won(p.count) + '명</b></div>';
+            }).join('')
+          : '');
+    })
+    .catch(function(){ veil(false); note('사용량을 불러오지 못했습니다.', 'err'); });
 }
 </script>
 </body>
